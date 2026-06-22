@@ -1,12 +1,7 @@
 <a name="readme-top"></a>
 
-[![Release](https://img.shields.io/github/v/release/Lollollolmymy/Octo-Linux?include_prereleases&label=pre-alpha)](https://github.com/Lollollolmymy/Octo-Linux/releases)
-[![Issues](https://img.shields.io/github/issues/Lollollolmymy/Octo-Linux)](https://github.com/Lollollolmymy/Octo-Linux/issues)
-[![Stars](https://img.shields.io/github/stars/Lollollolmymy/Octo-Linux)](https://github.com/Lollollolmymy/Octo-Linux/stargazers)
-
-<br />
 <div align="center">
-  <img src="overlay/usr/share/octolinux/assets/logo-dark.png" alt="OctoLinux logo" width="280" />
+  <img src="overlay/usr/share/octolinux/assets/logo-dark.png" alt="OctoLinux logo" width="240" />
   <h1>OctoLinux</h1>
   <p><strong>An experimental desktop Linux distribution and operating-system design prototype.</strong></p>
   <p>
@@ -15,6 +10,11 @@
     <a href="https://github.com/Lollollolmymy/Octo-Linux/issues/new">Report a Problem</a>
     ·
     <a href="https://github.com/Lollollolmymy/Octo-Linux/issues">View Issues</a>
+  </p>
+  <p>
+    <a href="https://github.com/Lollollolmymy/Octo-Linux/releases"><img src="https://img.shields.io/github/v/release/Lollollolmymy/Octo-Linux?include_prereleases&label=pre-alpha" alt="Release" /></a>
+    <a href="https://github.com/Lollollolmymy/Octo-Linux/issues"><img src="https://img.shields.io/github/issues/Lollollolmymy/Octo-Linux" alt="Issues" /></a>
+    <a href="https://github.com/Lollollolmymy/Octo-Linux/stargazers"><img src="https://img.shields.io/github/stars/Lollollolmymy/Octo-Linux" alt="Stars" /></a>
   </p>
 </div>
 
