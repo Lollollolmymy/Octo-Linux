@@ -13,7 +13,7 @@ fi
 
 export DOCKER_CONFIG="$docker_config"
 export DOCKER_HOST="unix://$HOME/.colima/${OCTOLINUX_COLIMA_PROFILE:-octolinux-fast}/docker.sock"
-export OCTOLINUX_BUILD_MODE=fast
+export OCTOLINUX_BUILD_MODE="${OCTOLINUX_BUILD_MODE:-fast}"
 export OCTOLINUX_SKIP_BUILDER_IMAGE="${OCTOLINUX_SKIP_BUILDER_IMAGE:-1}"
 export OCTOLINUX_CONTAINER_PLATFORM=linux/arm64
 export OCTOLINUX_REPOSITORY="${OCTOLINUX_REPOSITORY:-https://mirrors.summithq.com/voidlinux/current}"
