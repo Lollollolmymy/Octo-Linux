@@ -6,7 +6,7 @@
 
 <br />
 <div align="center">
-  <img src="overlay/usr/share/octolinux/assets/logo-light.png" alt="OctoLinux logo" width="180" />
+  <img src="overlay/usr/share/octolinux/assets/logo-dark.png" alt="OctoLinux logo" width="280" />
   <h1>OctoLinux</h1>
   <p><strong>An experimental desktop Linux distribution and operating-system design prototype.</strong></p>
   <p>
