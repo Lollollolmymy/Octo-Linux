@@ -1,0 +1,8 @@
+build/
+dist/*.iso
+dist/*.img
+*.log
+.DS_Store
+**/.DS_Store
+void-mklive/
+test-loop.sh

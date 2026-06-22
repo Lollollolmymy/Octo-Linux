@@ -1,0 +1,40 @@
+# Desktop, graphics, services, and user-facing runtime packages.
+xorg
+mesa
+mesa-dri
+vulkan-loader
+Vulkan-Tools
+mesa-vulkan-radeon
+mesa-vulkan-intel
+mesa-vulkan-nouveau
+libinput
+xfce4
+xfce4-plugins
+xfce4-whiskermenu-plugin
+NetworkManager
+network-manager-applet
+lightdm
+lightdm-gtk3-greeter
+ghostty
+gvfs
+gvfs-mtp
+pavucontrol
+qarma
+gptfdisk
+grub-x86_64-efi
+dejavu-fonts-ttf
+adwaita-icon-theme
+pipewire
+wireplumber
+# Void's pipewire package provides the PipeWire runtime; PulseAudio-compatible
+# service wiring belongs in the service/session layer for this stage.
+bluez
+cups
+upower
+gnome-keyring
+xdg-desktop-portal
+xdg-desktop-portal-wlr
+flatpak
+bubblewrap
+grim
+slurp

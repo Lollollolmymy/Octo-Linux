@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+amber='[38;2;255;204;102m'
+cyan='[38;2;92;207;230m'
+reset='[0m'
+
+printf '%s' "$amber"
+cat /usr/share/octolinux/ascii-logo.txt
+printf '%s%s%s\n\n' "$cyan" "                         OctoLinux" "$reset"
+
+exec fastfetch --logo none \
+    --color-keys cyan \
+    --color-title yellow \
+    --structure Title:Separator:OS:Host:Kernel:Uptime:Packages:Shell:Display:DE:WM:Terminal:CPU:GPU:Memory:Disk:LocalIp:Battery:Locale:Break:Colors "$@"

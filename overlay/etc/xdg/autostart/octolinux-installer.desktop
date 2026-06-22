@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Install OctoLinux
+Exec=sh -c 'test "$USER" != octo || { sleep 3; /usr/local/bin/octolinux-installer; }'
+OnlyShowIn=XFCE;
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

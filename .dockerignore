@@ -1,0 +1,5 @@
+dist/
+void-mklive/.git/
+void-mklive/xbps-cachedir-*/
+void-mklive/void-live-*.iso
+**/.DS_Store

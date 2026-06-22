@@ -1,0 +1,11 @@
+font-family = DejaVu Sans Mono
+font-size = 12
+background = #1F2430
+foreground = #D7DCE2
+cursor-color = #FFCC66
+selection-background = #5CCFE6
+selection-foreground = #1F2430
+background-opacity = 0.94
+window-theme = dark
+confirm-close-surface = false
+shell-integration = zsh

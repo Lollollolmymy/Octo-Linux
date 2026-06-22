@@ -1,0 +1,197 @@
+#!/bin/sh
+set -eu
+
+logo=/usr/share/octolinux/assets/logo-dark.png
+
+notify() {
+    qarma --title="OctoLinux Installer" --window-icon="$logo" "$@"
+}
+
+mode=$(
+    qarma --list --radiolist --title="Install OctoLinux" --width=680 --height=390 \
+        --text="<big><b>Welcome to OctoLinux</b></big>\n\nChoose a guided installation or advanced manual partitioning." \
+        --column="Use" --column="Mode" --column="Description" \
+        TRUE auto "Auto Configure - recommended disk layout and desktop setup" \
+        FALSE advanced "Advanced - manual partitioning and package selection" \
+        --print-column=2
+) || exit 0
+
+if [ "$mode" = advanced ]; then
+    exec xfce4-terminal --title="OctoLinux Advanced Installer" \
+        --hold -e "sudo /usr/bin/void-installer"
+fi
+
+notify --info --width=600 \
+    --text="<big><b>Auto Configure</b></big>\n\nOctoLinux will detect firmware, networking, and a suitable disk layout. Nothing is changed until the final review."
+
+disk_rows=$(
+    lsblk -bdnpo NAME,SIZE,MODEL,TYPE,RO |
+        awk '$4 == "disk" && $5 == "0" && $2 >= 21474836480 {
+            model=$3; if (model == "") model="Virtual disk";
+            gib=int($2/1073741824); print $1 "|" gib " GiB|" model
+        }'
+)
+
+if [ -z "$disk_rows" ]; then
+    notify --error --text="No writable disk of at least 20 GiB was found."
+    exit 1
+fi
+
+set -- --list --radiolist --title="Choose installation disk" --width=680 --height=420 \
+    --text="Select the disk OctoLinux may erase:" \
+    --column="Use" --column="Device" --column="Size" --column="Model"
+
+first=true
+old_ifs=$IFS
+IFS='
+'
+for row in $disk_rows; do
+    device=${row%%|*}
+    rest=${row#*|}
+    size=${rest%%|*}
+    model=${rest#*|}
+    if $first; then
+        set -- "$@" TRUE "$device" "$size" "$model"
+        first=false
+    else
+        set -- "$@" FALSE "$device" "$size" "$model"
+    fi
+done
+IFS=$old_ifs
+
+disk=$(qarma "$@" --print-column=2) || exit 0
+[ -n "$disk" ] || exit 0
+
+form=$(
+    qarma --forms --title="Create your account" --width=560 \
+        --text="Choose the installed system identity." \
+        --add-entry="Computer name" \
+        --entry-value="octolinux" \
+        --add-entry="Username" \
+        --add-password="Password" \
+        --separator='|' \
+        --forms-date-format='' 2>/dev/null
+) || exit 0
+
+hostname=${form%%|*}
+rest=${form#*|}
+username=${rest%%|*}
+password=${rest#*|}
+
+case "$hostname" in
+    ""|*[!A-Za-z0-9-]*|-*|*-) notify --error --text="Computer name may contain letters, numbers, and internal hyphens."; exit 1 ;;
+esac
+case "$username" in
+    ""|*[!a-z0-9_-]*|[0-9-]*) notify --error --text="Username must begin with a letter or underscore and use lowercase letters, numbers, underscores, or hyphens."; exit 1 ;;
+esac
+[ -n "$password" ] || { notify --error --text="Password cannot be empty."; exit 1; }
+
+desktop=$(
+    qarma --list --radiolist --title="Choose desktop" --width=680 --height=420 \
+        --text="The live session uses Xfce. Choose the desktop to install:" \
+        --column="Use" --column="Desktop" --column="Description" \
+        TRUE xfce "Xfce - lightweight, complete, and the OctoLinux default" \
+        FALSE gnome "GNOME - modern workflow and integrated applications" \
+        FALSE plasma "KDE Plasma - highly customizable desktop" \
+        FALSE mate "MATE - traditional desktop with modest resource use" \
+        --print-column=2
+) || exit 0
+
+keymap=$(
+    qarma --list --radiolist --title="Keyboard layout" --width=680 --height=520 \
+        --text="Choose your keyboard layout:" \
+        --column="Use" --column="Layout" --column="Description" \
+        TRUE  us  "English (US)" \
+        FALSE gb  "English (UK)" \
+        FALSE de  "German" \
+        FALSE fr  "French (AZERTY)" \
+        FALSE es  "Spanish" \
+        FALSE it  "Italian" \
+        FALSE pt  "Portuguese (Portugal)" \
+        FALSE br  "Portuguese (Brazil)" \
+        FALSE ru  "Russian" \
+        FALSE pl  "Polish" \
+        FALSE nl  "Dutch" \
+        FALSE sv  "Swedish" \
+        FALSE nb  "Norwegian" \
+        FALSE fi  "Finnish" \
+        FALSE da  "Danish" \
+        FALSE cs  "Czech" \
+        FALSE hu  "Hungarian" \
+        FALSE ro  "Romanian" \
+        FALSE tr  "Turkish" \
+        FALSE jp  "Japanese" \
+        FALSE kr  "Korean" \
+        FALSE cn  "Chinese (Pinyin)" \
+        --print-column=2
+) || exit 0
+
+locale=$(
+    qarma --list --radiolist --title="System language" --width=680 --height=520 \
+        --text="Choose your system locale:" \
+        --column="Use" --column="Locale" --column="Language" \
+        TRUE  en_US.UTF-8  "English (United States)" \
+        FALSE en_GB.UTF-8  "English (United Kingdom)" \
+        FALSE de_DE.UTF-8  "German (Germany)" \
+        FALSE fr_FR.UTF-8  "French (France)" \
+        FALSE es_ES.UTF-8  "Spanish (Spain)" \
+        FALSE es_MX.UTF-8  "Spanish (Mexico)" \
+        FALSE it_IT.UTF-8  "Italian (Italy)" \
+        FALSE pt_PT.UTF-8  "Portuguese (Portugal)" \
+        FALSE pt_BR.UTF-8  "Portuguese (Brazil)" \
+        FALSE ru_RU.UTF-8  "Russian (Russia)" \
+        FALSE pl_PL.UTF-8  "Polish (Poland)" \
+        FALSE nl_NL.UTF-8  "Dutch (Netherlands)" \
+        FALSE sv_SE.UTF-8  "Swedish (Sweden)" \
+        FALSE nb_NO.UTF-8  "Norwegian (Norway)" \
+        FALSE fi_FI.UTF-8  "Finnish (Finland)" \
+        FALSE da_DK.UTF-8  "Danish (Denmark)" \
+        FALSE cs_CZ.UTF-8  "Czech (Czechia)" \
+        FALSE hu_HU.UTF-8  "Hungarian (Hungary)" \
+        FALSE ro_RO.UTF-8  "Romanian (Romania)" \
+        FALSE tr_TR.UTF-8  "Turkish (Turkey)" \
+        FALSE ja_JP.UTF-8  "Japanese (Japan)" \
+        FALSE ko_KR.UTF-8  "Korean (Korea)" \
+        FALSE zh_CN.UTF-8  "Chinese Simplified (China)" \
+        FALSE zh_TW.UTF-8  "Chinese Traditional (Taiwan)" \
+        --print-column=2
+) || exit 0
+
+firmware=BIOS
+[ ! -d /sys/firmware/efi ] || firmware=UEFI
+timezone=$(readlink /etc/localtime 2>/dev/null | sed 's|.*/zoneinfo/||')
+[ -n "$timezone" ] || timezone=UTC
+
+notify --question --width=680 --ok-label="Install" --cancel-label="Go back" \
+    --text="<big><b>Review automatic configuration</b></big>\n\nDisk: $disk (erase entire disk)\nFirmware: $firmware\nFilesystem: ext4\nSwap: automatic swap file\nNetwork: automatic DHCP\nLocale: $locale\nKeyboard: $keymap\nTimezone: $timezone\nComputer: $hostname\nUser: $username\nDesktop: $desktop\n\nContinue to the destructive confirmation?" || exit 0
+
+confirm=$(
+    qarma --entry --title="Final confirmation" --width=600 \
+        --text="<b>Everything on $disk will be erased.</b>\n\nType ERASE to install OctoLinux:"
+) || exit 0
+[ "$confirm" = ERASE ] || { notify --warning --text="Installation cancelled. The disk was not changed."; exit 0; }
+
+log=$(mktemp)
+(
+    pkexec /usr/local/sbin/octolinux-install-system "$disk" "$hostname" "$username" "$password" "$timezone" "$desktop" "$keymap" "$locale"
+) >"$log" 2>&1 &
+pid=$!
+
+while kill -0 "$pid" 2>/dev/null; do
+    tail -n 1 "$log" 2>/dev/null || true
+    sleep 1
+done | qarma --progress --pulsate --auto-close --no-cancel \
+    --title="Installing OctoLinux" --width=560 \
+    --text="Partitioning and installing the system..."
+
+if wait "$pid"; then
+    rm -f "$log"
+    notify --question --ok-label="Restart" --cancel-label="Keep testing" \
+        --text="<big><b>Installation complete</b></big>\n\nRemove the ISO after restarting."
+    [ "$?" -ne 0 ] || pkexec reboot
+else
+    details=$(tail -n 30 "$log")
+    rm -f "$log"
+    notify --error --width=680 --text="Installation failed.\n\n$details"
+    exit 1
+fi

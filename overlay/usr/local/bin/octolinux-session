@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+export XDG_CURRENT_DESKTOP=OctoLinux
+export XDG_SESSION_DESKTOP=OctoLinux
+export XDG_SESSION_TYPE=x11
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+if command -v OctoComp >/dev/null 2>&1; then
+    exec OctoComp
+fi
+
+if command -v startxfce4 >/dev/null 2>&1; then
+    exec dbus-run-session startxfce4
+fi
+
+exec zsh -l

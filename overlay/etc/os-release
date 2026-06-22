@@ -1,0 +1,7 @@
+NAME="OctoLinux"
+PRETTY_NAME="OctoLinux Stage 0"
+ID=octolinux
+ID_LIKE=void
+BUILD_ID=stage0
+ANSI_COLOR="1;33"
+HOME_URL="https://example.invalid/octolinux"

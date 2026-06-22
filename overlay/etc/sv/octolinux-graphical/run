@@ -1,0 +1,17 @@
+#!/bin/sh
+exec 2>&1
+
+sv check dbus >/dev/null || exit 1
+
+if ! sv check lightdm >/dev/null 2>&1; then
+    sv up lightdm
+fi
+
+sleep 8
+if ! pgrep -x Xorg >/dev/null 2>&1; then
+    echo "OctoLinux: graphical login did not start."
+    [ ! -r /var/log/lightdm/lightdm.log ] || tail -n 80 /var/log/lightdm/lightdm.log
+    [ ! -r /var/log/lightdm/x-0.log ] || tail -n 80 /var/log/lightdm/x-0.log
+fi
+
+exec sleep infinity

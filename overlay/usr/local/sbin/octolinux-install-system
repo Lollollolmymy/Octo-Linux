@@ -1,0 +1,178 @@
+#!/bin/sh
+set -eu
+
+[ "$(id -u)" -eq 0 ] || { echo "This installer must run as root." >&2; exit 1; }
+[ "$#" -eq 8 ] || { echo "Usage: $0 DISK HOSTNAME USERNAME PASSWORD TIMEZONE DESKTOP KEYMAP LOCALE" >&2; exit 1; }
+
+disk=$1
+hostname=$2
+username=$3
+password=$4
+timezone=$5
+desktop=$6
+keymap=$7
+locale=$8
+target=/mnt/octolinux-target
+repo=https://repo-default.voidlinux.org/current
+
+[ -b "$disk" ] || { echo "Not a block device: $disk" >&2; exit 1; }
+[ "$(lsblk -dno TYPE "$disk")" = disk ] || { echo "Refusing non-disk target: $disk" >&2; exit 1; }
+
+case "$desktop" in
+    xfce)
+        desktop_packages="xfce4 xfce4-plugins xfce4-whiskermenu-plugin"
+        ;;
+    gnome)
+        desktop_packages="gnome"
+        ;;
+    plasma)
+        desktop_packages="kde-plasma"
+        ;;
+    mate)
+        desktop_packages="mate mate-extra"
+        ;;
+    *)
+        echo "Unsupported desktop profile: $desktop" >&2
+        exit 1
+        ;;
+esac
+
+uefi=false
+[ ! -d /sys/firmware/efi ] || uefi=true
+
+case "$disk" in *[0-9]) part="${disk}p" ;; *) part="$disk" ;; esac
+if $uefi; then
+    efi="${part}1"
+    root="${part}2"
+else
+    root="${part}2"
+fi
+
+cleanup() {
+    umount -R "$target" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+echo "Clearing partition table..."
+wipefs -af "$disk"
+sgdisk --zap-all "$disk"
+if $uefi; then
+    sgdisk -n 1:1MiB:+512MiB -t 1:ef00 -c 1:OCTO_EFI "$disk"
+else
+    sgdisk -n 1:1MiB:+2MiB -t 1:ef02 -c 1:BIOS_BOOT "$disk"
+fi
+sgdisk -n 2:0:0 -t 2:8300 -c 2:OCTO_ROOT "$disk"
+partprobe "$disk"
+udevadm settle
+
+echo "Creating filesystems..."
+mkfs.ext4 -F -L OCTO_ROOT "$root"
+
+mkdir -p "$target"
+mount "$root" "$target"
+if $uefi; then
+    mkfs.fat -F 32 -n OCTO_EFI "$efi"
+    mkdir -p "$target/boot/efi"
+    mount "$efi" "$target/boot/efi"
+fi
+
+echo "Installing OctoLinux packages..."
+mkdir -p "$target/var/db/xbps/keys"
+cp -a /var/db/xbps/keys/. "$target/var/db/xbps/keys/"
+xbps-install -Sy -R "$repo" -r "$target" \
+    base-system linux linux-firmware linux-firmware-amd linux-firmware-intel fastfetch \
+    zsh sudo dbus elogind polkit xorg $desktop_packages \
+    NetworkManager network-manager-applet ghostty xfce4-terminal \
+    lightdm lightdm-gtk3-greeter gvfs gvfs-mtp pavucontrol qarma \
+    mesa mesa-dri pipewire wireplumber bluez upower gnome-keyring \
+    xdg-desktop-portal grub grub-x86_64-efi efibootmgr dosfstools glibc-locales
+
+echo "Copying OctoLinux configuration..."
+cp -a /usr/share/octolinux "$target/usr/share/"
+cp -a /usr/local/bin/octolinux-session "$target/usr/local/bin/"
+cp -a /usr/local/bin/octolinux-installer "$target/usr/local/bin/"
+cp -a /usr/local/bin/octofetch "$target/usr/local/bin/"
+cp -a /usr/local/bin/octolinux-first-login "$target/usr/local/bin/"
+ln -snf octofetch "$target/usr/local/bin/neofetch"
+ln -snf octofetch "$target/usr/local/bin/nanofetch"
+mkdir -p "$target/etc/pipewire"
+cp -a /etc/pipewire/pipewire.conf.d "$target/etc/pipewire/"
+mkdir -p "$target/etc/lightdm"
+cp -a /etc/lightdm/lightdm.conf "$target/etc/lightdm/"
+cp -a /etc/lightdm/lightdm-gtk-greeter.conf "$target/etc/lightdm/"
+# The live ISO auto-logs into its disposable account. Installed systems must
+# always stop at LightDM for the account created in this installer.
+sed -i '/^autologin-user=/d; /^autologin-user-timeout=/d' \
+    "$target/etc/lightdm/lightdm.conf"
+mkdir -p "$target/usr/share/xfce4/helpers"
+cp -a /usr/share/xfce4/helpers/ghostty.desktop "$target/usr/share/xfce4/helpers/"
+mkdir -p "$target/etc/xdg/autostart" "$target/etc/skel"
+cp -a /etc/xdg/autostart/octolinux-session.desktop "$target/etc/xdg/autostart/"
+cp -a /etc/skel/. "$target/etc/skel/"
+rm -f "$target/etc/skel/Desktop/install-octolinux.desktop"
+printf '%s\n' "$hostname" > "$target/etc/hostname"
+printf 'LANG=%s\n' "$locale" > "$target/etc/locale.conf"
+printf 'KEYMAP=%s\n' "$keymap" > "$target/etc/vconsole.conf"
+
+# Uncomment the chosen locale in libc-locales and regenerate
+sed -i "s|^#${locale}|${locale}|" "$target/etc/default/libc-locales" 2>/dev/null || true
+chroot "$target" xbps-reconfigure -f glibc-locales 2>/dev/null || true
+
+# Set the X11 keyboard layout so Xorg and Wayland sessions pick it up
+mkdir -p "$target/etc/X11/xorg.conf.d"
+cat > "$target/etc/X11/xorg.conf.d/00-keyboard.conf" <<EOF
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "$keymap"
+EndSection
+EOF
+ln -snf "/usr/share/zoneinfo/$timezone" "$target/etc/localtime"
+
+root_uuid=$(blkid -s UUID -o value "$root")
+cat > "$target/etc/fstab" <<EOF
+UUID=$root_uuid / ext4 defaults,noatime 0 1
+EOF
+if $uefi; then
+    efi_uuid=$(blkid -s UUID -o value "$efi")
+    printf 'UUID=%s /boot/efi vfat defaults,noatime 0 2\n' "$efi_uuid" >> "$target/etc/fstab"
+fi
+
+mount --rbind /dev "$target/dev"
+mount --make-rslave "$target/dev"
+mount -t proc proc "$target/proc"
+mount --rbind /sys "$target/sys"
+mount --make-rslave "$target/sys"
+
+chroot "$target" /bin/sh -c "useradd -m -s /bin/zsh -G wheel,audio,video,input,storage,network '$username'"
+cp -a "$target/etc/skel/." "$target/home/$username/"
+chroot "$target" chown -R "$username:$username" "/home/$username"
+printf '%s:%s\n' "$username" "$password" | chroot "$target" chpasswd
+printf 'root:%s\n' "$password" | chroot "$target" chpasswd
+printf '%%wheel ALL=(ALL:ALL) ALL\n' > "$target/etc/sudoers.d/10-octolinux-wheel"
+chmod 0440 "$target/etc/sudoers.d/10-octolinux-wheel"
+
+echo "Creating automatic swap file..."
+dd if=/dev/zero of="$target/swapfile" bs=1M count=2048 status=none
+chmod 0600 "$target/swapfile"
+chroot "$target" mkswap /swapfile >/dev/null
+printf '/swapfile none swap defaults 0 0\n' >> "$target/etc/fstab"
+
+service_dir="$target/etc/runit/runsvdir/default"
+mkdir -p "$service_dir"
+for service in dbus elogind polkitd NetworkManager lightdm; do
+    [ ! -d "$target/etc/sv/$service" ] || ln -snf "/etc/sv/$service" "$service_dir/$service"
+done
+rm -f "$service_dir/agetty-tty1" "$service_dir/dhcpcd" \
+    "$service_dir/wpa_supplicant" "$service_dir/greetd"
+
+echo "Installing bootloader..."
+if $uefi; then
+    chroot "$target" grub-install --target=x86_64-efi --efi-directory=/boot/efi \
+        --bootloader-id=OctoLinux --removable
+else
+    chroot "$target" grub-install --target=i386-pc "$disk"
+fi
+chroot "$target" grub-mkconfig -o /boot/grub/grub.cfg
+
+echo "Installation complete."

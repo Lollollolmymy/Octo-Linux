@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=OctoLinux Session Setup
+Exec=/usr/local/bin/octolinux-first-login
+NoDisplay=true

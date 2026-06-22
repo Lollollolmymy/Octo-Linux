@@ -1,0 +1,94 @@
+diff --git a/mklive.sh b/mklive.sh
+index 069c8fa..7328a9c 100755
+--- a/mklive.sh
++++ b/mklive.sh
+@@ -56,7 +56,7 @@ mount_pseudofs() {
+ 
+ umount_pseudofs() {
+ 	for f in sys dev proc; do
+-		if [ -d "$ROOTFS/$f" ] && ! umount -R -f "$ROOTFS/$f"; then
++		if [ -d "$ROOTFS/$f" ] && ! umount -R -l "$ROOTFS/$f"; then
+ 			info_msg "ERROR: failed to unmount $ROOTFS/$f/"
+ 			return 1
+ 		fi
+@@ -385,16 +385,10 @@ EOF
+ 
+     cp -f "$GRUB_DATADIR"/unicode.pf2 "$GRUB_DIR"/fonts
+ 
+-    modprobe -q loop || :
+-
+     # Create EFI vfat image.
+     truncate -s 32M "$GRUB_DIR"/efiboot.img >/dev/null 2>&1
+     mkfs.vfat -F12 -S 512 -n "grub_uefi" "$GRUB_DIR/efiboot.img" >/dev/null 2>&1
+ 
+-    GRUB_EFI_TMPDIR="$(mktemp --tmpdir="$BUILDDIR" -dt grub-efi.XXXXX)"
+-    LOOP_DEVICE="$(losetup --show --find "${GRUB_DIR}"/efiboot.img)"
+-    mount -o rw,flush -t vfat "${LOOP_DEVICE}" "${GRUB_EFI_TMPDIR}" >/dev/null 2>&1
+-
+ 	build_grub_image() {
+ 		local GRUB_ARCH="$1" EFI_ARCH="$2"
+ 		xbps-uchroot "$VOIDTARGETDIR" grub-mkstandalone -- \
+@@ -403,12 +397,13 @@ EOF
+ 			 --output="/tmp/boot${EFI_ARCH,,}.efi" \
+ 			 "boot/grub/grub.cfg"
+ 		if [ $? -ne 0 ]; then
+-			umount "$GRUB_EFI_TMPDIR"
+-			losetup --detach "${LOOP_DEVICE}"
+ 			die "Failed to generate EFI loader"
+ 		fi
+-		mkdir -p "${GRUB_EFI_TMPDIR}"/EFI/BOOT
+-		cp -f "$VOIDTARGETDIR/tmp/boot${EFI_ARCH,,}.efi" "${GRUB_EFI_TMPDIR}/EFI/BOOT/BOOT${EFI_ARCH^^}.EFI"
++		
++		# Copy the generated loader into the vfat image using mtools
++		mmd -i "$GRUB_DIR"/efiboot.img ::/EFI >/dev/null 2>&1 || :
++		mmd -i "$GRUB_DIR"/efiboot.img ::/EFI/BOOT >/dev/null 2>&1 || :
++		mcopy -i "$GRUB_DIR"/efiboot.img "$VOIDTARGETDIR/tmp/boot${EFI_ARCH,,}.efi" ::/EFI/BOOT/BOOT${EFI_ARCH^^}.EFI
+ 	}
+ 
+     cp -a "$IMAGEDIR"/boot "$VOIDTARGETDIR"
+@@ -427,32 +422,35 @@ EOF
+ 			build_grub_image arm64 aa64
+             ;;
+     esac
+-    umount "$GRUB_EFI_TMPDIR"
+-    losetup --detach "${LOOP_DEVICE}"
+     rm -rf "$GRUB_EFI_TMPDIR"
+ }
+ 
+ generate_squashfs() {
+     umount_pseudofs || exit 1
+ 
++    # Purge the XBPS package cache from the rootfs before measuring size and
++    # building the squashfs image.  The cache can be hundreds of MB and adds
++    # compression work without benefiting the live system.
++    rm -rf "$ROOTFS"/var/cache/xbps/*
++
+     # Find out required size for the rootfs and create an ext3fs image off it.
+     ROOTFS_SIZE=$(du --apparent-size -sm "$ROOTFS"|awk '{print $1}')
++    # Leave room for ext filesystem metadata, sparse files, and desktop package
++    # sets whose apparent size underestimates allocated blocks.
++    EXT3FS_SIZE=$((ROOTFS_SIZE * 3 + 512))
+     mkdir -p "$BUILDDIR/tmp/LiveOS"
+-    truncate -s "$((ROOTFS_SIZE+ROOTFS_SIZE))M" \
++    truncate -s "${EXT3FS_SIZE}M" \
+ 	    "$BUILDDIR"/tmp/LiveOS/ext3fs.img >/dev/null 2>&1
+-    mkdir -p "$BUILDDIR/tmp-rootfs"
+-    mkfs.ext3 -F -m1 "$BUILDDIR/tmp/LiveOS/ext3fs.img" >/dev/null 2>&1
+-    mount -o loop "$BUILDDIR/tmp/LiveOS/ext3fs.img" "$BUILDDIR/tmp-rootfs"
+-    cp -a "$ROOTFS"/* "$BUILDDIR"/tmp-rootfs/
+-    umount -f "$BUILDDIR/tmp-rootfs"
++    mkfs.ext3 -F -m1 -d "$ROOTFS" "$BUILDDIR/tmp/LiveOS/ext3fs.img" ||
++        die "Failed to generate live ext3 rootfs image"
+     mkdir -p "$IMAGEDIR/LiveOS"
+ 
+     "$VOIDHOSTDIR"/usr/bin/mksquashfs "$BUILDDIR/tmp" "$IMAGEDIR/LiveOS/squashfs.img" \
+-        -comp "${SQUASHFS_COMPRESSION}" || die "Failed to generate squashfs image"
++        -comp "${SQUASHFS_COMPRESSION}" ${MKSQUASHFS_OPTS:-} || die "Failed to generate squashfs image"
+     chmod 444 "$IMAGEDIR/LiveOS/squashfs.img"
+ 
+     # Remove rootfs and temporary dirs, we don't need them anymore.
+-    rm -rf "$ROOTFS" "$BUILDDIR/tmp-rootfs" "$BUILDDIR/tmp"
++    rm -rf "$ROOTFS" "$BUILDDIR/tmp"
+ }
+ 
+ generate_iso_image() {

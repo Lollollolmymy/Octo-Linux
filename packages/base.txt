@@ -1,0 +1,40 @@
+# Core OctoLinux system packages.
+base-system
+linux
+linux-firmware
+linux-firmware-amd
+linux-firmware-intel
+glibc
+xbps
+zsh
+s6
+s6-rc
+# The installed OctoLinux target should use s6-linux-init. The stage 0 live ISO
+# uses Void's live-image base, which depends on runit-void and conflicts with it.
+dbus
+# dbus-broker is part of the OctoLinux design, but is not packaged by Void.
+# Build/package it separately before replacing dbus in a later stage.
+elogind
+polkit
+util-linux
+e2fsprogs
+dosfstools
+efibootmgr
+dracut
+curl
+ca-certificates
+sudo
+vim
+less
+man-pages
+git
+fastfetch
+lz4
+dialog
+cryptsetup
+lvm2
+mdadm
+xtools-minimal
+xmirror
+chrony
+tmux

@@ -1,0 +1,5 @@
+OctoLinux targets s6 as its init and supervision stack.
+
+The stage 0 ISO keeps this directory as the service-design landing zone while
+the first bootable image is assembled through void-mklive. Real service trees
+should be added here as the system moves from live prototype to installable OS.

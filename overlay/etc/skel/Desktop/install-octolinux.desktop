@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Install OctoLinux
+Comment=Install OctoLinux to this computer
+Exec=/usr/local/bin/octolinux-installer
+Icon=/usr/share/octolinux/assets/logo-dark.png
+Terminal=false
+Categories=System;
