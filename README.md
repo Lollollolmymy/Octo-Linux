@@ -34,8 +34,7 @@
     <li><a href="#building">Building</a></li>
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#contributing">Contributing</a></li>
-    <li><a href="#upstream">Upstream and Attribution</a></li>
-    <li><a href="#license">License</a></li>
+    <li><a href="#upstream">Upstream, Attribution, and License</a></li>
   </ol>
 </details>
 
@@ -244,24 +243,14 @@ Include the hypervisor or hardware, firmware mode, assigned storage and RAM, and
 
 ---
 
-## <a name="upstream"></a> Upstream and Attribution
+## <a name="upstream"></a> Upstream, Attribution, and License
 
 OctoLinux currently consumes packages and live-image tooling from the Void Linux ecosystem. Void Linux and OctoLinux are separate projects; OctoLinux is not an official Void Linux flavor.
 
 The upstream live-image tooling is fetched from [`void-linux/void-mklive`](https://github.com/void-linux/void-mklive) and patched locally for container-friendly image creation. See the upstream project for its copyright and license terms.
 
+OctoLinux project files (overlays, installer scripts, build tooling, branding assets, and documentation) are released under the **MIT License**. See [`LICENSE`](LICENSE) for the full license text. Packages installed into the live image and the installed system are distributed under their own respective licenses.
+
 No stability, compatibility, or data-safety guarantees are made for this pre-alpha image.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
----
-
-## <a name="license"></a> License
-
-OctoLinux project files — overlays, installer scripts, build tooling, branding assets, and documentation — are released under the **MIT License**.
-
-See [`LICENSE`](LICENSE) for the full license text.
-
-Packages installed into the live image and the installed system are distributed under their own respective licenses. The upstream `void-mklive` tooling is copyright Void Linux contributors and is used and patched under its own license terms.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
